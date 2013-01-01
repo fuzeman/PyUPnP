@@ -45,11 +45,11 @@ if __name__ == '__main__':
 
                             print '\t\t\t\tDescribed:', s.described
                             if s.described:
-                                print '\t\t\t\t\tService Type:', s._serviceType
-                                print '\t\t\t\t\tService ID:', s._serviceId
-                                print '\t\t\t\t\tControlURL:', s._controlURL
-                                print '\t\t\t\t\tEventSubURL:', s._eventSubURL
-                                print '\t\t\t\t\tSCPDURL:', s._SCPDURL
+                                print '\t\t\t\t\tService Type:', s.serviceType
+                                print '\t\t\t\t\tService ID:', s.serviceId
+                                print '\t\t\t\t\tControlURL:', s.controlURL
+                                print '\t\t\t\t\tEventSubURL:', s.eventSubURL
+                                print '\t\t\t\t\tSCPDURL:', s.SCPDURL
             print
 
     SSDP_MSearch.search(foundDevice, finishedSearching)

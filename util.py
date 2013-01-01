@@ -1,3 +1,5 @@
+import urlparse
+
 __author__ = 'Dean Gardiner'
 
 
@@ -22,3 +24,14 @@ def http_parse_raw(data):
                 headers[hk] = hv
 
     return version, respCode, respText, headers
+
+
+def absolute_url(baseUrl, url):
+    if url.strip() == '':
+        return url
+
+    urlp = urlparse.urlparse(url)
+    if urlp.netloc == '':
+        url = urlparse.urljoin(baseUrl, url)
+
+    return url

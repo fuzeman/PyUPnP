@@ -1,31 +1,35 @@
 import urllib
+import urlparse
 import xml.etree.ElementTree as et
+from util import absolute_url
 
 __author__ = 'Dean Gardiner'
 
 
 class Service():
-    def __init__(self, schema, type, version, xml_tree=None):
+    def __init__(self, schema, type, version, xml_tree=None, baseUrl=None):
         self.schema = schema
         self.type = type
         self.version = version
         self.described = False
 
-        self._serviceType = None
-        self._serviceId = None
-        self._controlURL = None
-        self._eventSubURL = None
-        self._SCPDURL = None
+        self.serviceType = None
+        self.serviceId = None
+        self.controlURL = None
+        self.eventSubURL = None
+        self.SCPDURL = None
 
-        self.update(xml_tree)
+        self.update(xml_tree, baseUrl)
 
-    def update(self, xml_tree):
-        if xml_tree is not None:
-            self._serviceType = xml_tree.findtext('{urn:schemas-upnp-org:device-1-0}serviceType')
-            self._serviceId = xml_tree.findtext('{urn:schemas-upnp-org:device-1-0}serviceId')
-            self._controlURL = xml_tree.findtext('{urn:schemas-upnp-org:device-1-0}controlURL')
-            self._eventSubURL = xml_tree.findtext('{urn:schemas-upnp-org:device-1-0}eventSubURL')
-            self._SCPDURL = xml_tree.findtext('{urn:schemas-upnp-org:device-1-0}SCPDURL')
+    def update(self, xml_tree, baseUrl):
+        if xml_tree is not None and baseUrl is not None:
+            self.serviceType = xml_tree.findtext('{urn:schemas-upnp-org:device-1-0}serviceType')
+            self.serviceId = xml_tree.findtext('{urn:schemas-upnp-org:device-1-0}serviceId')
+
+            self.controlURL = absolute_url(baseUrl, xml_tree.findtext('{urn:schemas-upnp-org:device-1-0}controlURL'))
+            self.eventSubURL = absolute_url(baseUrl, xml_tree.findtext('{urn:schemas-upnp-org:device-1-0}eventSubURL'))
+            self.SCPDURL = absolute_url(baseUrl, xml_tree.findtext('{urn:schemas-upnp-org:device-1-0}SCPDURL'))
+
             self.described = True
 
 
@@ -61,9 +65,31 @@ class Device():
             self.services[schema][type] = {}
 
         if not version in self.services[schema][type]:
-            self.services[schema][type][version] = Service(schema, type, version, xml_tree)
+            self.services[schema][type][version] = Service(schema, type, version, xml_tree, baseUrl=self.getBaseUrl())
         else:
-            self.services[schema][type][version].update(xml_tree)
+            self.services[schema][type][version].update(xml_tree, baseUrl=self.getBaseUrl())
+
+    def get_service(self, path):
+        path = path.replace('/', '\\')
+
+        pathParts = path.split('\\')
+        if len(pathParts) != 3:
+            return None
+        schema, type, version = pathParts
+
+        if not schema in self.services:
+            return None
+        if not type in self.services[schema]:
+            return None
+        if not version in self.services[schema][type]:
+            return None
+
+        return self.services[schema][type][version]
+
+    def getBaseUrl(self):
+        if self.location:
+            u = urlparse.urlparse(self.location)
+            return u.scheme + '://' + u.netloc
 
     def __str__(self):
         return "(%s) [%s] [%s]" % (self.uuid, self.location, self.server)
