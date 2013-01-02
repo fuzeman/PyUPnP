@@ -1,4 +1,4 @@
-from twisted.internet import reactor, task
+from twisted.internet import reactor
 from twisted.internet.protocol import DatagramProtocol
 from upnp import Device
 from util import http_parse_raw
