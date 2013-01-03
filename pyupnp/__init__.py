@@ -1,6 +1,6 @@
 from twisted.internet import reactor
-from ssdp import SSDP_MSearch
-from upnp import UPnP, Device
+from pyupnp.ssdp import SSDP_MSearch
+from pyupnp.upnp import UPnP, Device
 
 __author__ = 'Dean Gardiner'
 

@@ -1,7 +1,7 @@
 from twisted.internet import reactor
 from twisted.internet.protocol import DatagramProtocol
-from upnp import Device
-from util import http_parse_raw
+from pyupnp.upnp import Device
+from pyupnp.util import http_parse_raw
 
 __author__ = 'Dean Gardiner'
 

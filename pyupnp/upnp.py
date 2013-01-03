@@ -1,7 +1,7 @@
 import urllib
 import urlparse
 import xml.etree.ElementTree as et
-from util import absolute_url
+from pyupnp.util import absolute_url
 
 __author__ = 'Dean Gardiner'
 
