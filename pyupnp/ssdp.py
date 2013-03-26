@@ -6,13 +6,15 @@ from pyupnp.util import http_parse_raw, get_default_v6_address, get_default_v4_a
 
 __author__ = 'Dean Gardiner'
 
-SSDP_ADDR = "239.255.255.250"
+SSDP_ADDR_V4 = "239.255.255.250"
+SSDP_ADDR_V6 = "[FF05::C]"
 SSDP_PORT = 1900
 
 
 class SSDP_Device(DatagramProtocol):
     _search_devices = {}
-    _search_lock = Semaphore(3)
+    #_search_lock = Semaphore(4)
+    _search_lock = Semaphore(2)
     _search_lock_value = 0
     _search_deviceFoundCallback = None
     _search_finishedCallback = None
@@ -41,12 +43,22 @@ class SSDP_Device(DatagramProtocol):
     @classmethod
     def search(cls, mx=1, target='ssdp:all', repeat=1,
                foundDeviceCallback=None, finishedCallback=None,
-               address=SSDP_ADDR, port=SSDP_PORT, timeout=1):
-        address_v4 = get_default_v4_address()
-        address_v6 = get_default_v6_address()
+               timeout=1):
+        """Search for SSDP devices/services
 
-        ssdp_any = SSDP_Device.createListener('', cls._search_deviceFound,
-                                              cls._search_stopped)
+
+        """
+
+        # NOTE: IPv6 is not implemented in twisted yet so has been commented out for now.
+
+        address_v4 = get_default_v4_address()
+        #address_v6 = get_default_v6_address()
+
+        ssdp_v4_any = SSDP_Device.createListener('', cls._search_deviceFound,
+                                                 cls._search_stopped)
+
+        #ssdp_v6_any = SSDP_Device.createListener('::', cls._search_deviceFound,
+        #                                         cls._search_stopped)
 
         ssdp_v4 = None
         if address_v4:
@@ -56,48 +68,52 @@ class SSDP_Device(DatagramProtocol):
                 cls._search_stopped
             )
 
-        ssdp_v6 = None
-        if address_v6:
-            ssdp_v6 = SSDP_Device.createListener(
-                address_v6,
-                cls._search_deviceFound,
-                cls._search_stopped
-            )
+        #ssdp_v6 = None
+        #if address_v6:
+        #    ssdp_v6 = SSDP_Device.createListener(
+        #        address_v6,
+        #        cls._search_deviceFound,
+        #        cls._search_stopped
+        #    )
 
         search_params = {
             'mx': mx,
             'target': target,
             'repeat': repeat,
 
-            'address': address,
-            'port': port,
+            'port': SSDP_PORT,
         }
 
         # Acquire looks before sending any search
-        cls._search_lock.acquire()
+        cls._search_lock.acquire()  # v4_any
+        #cls._search_lock.acquire()  # v6_any
         cls._search_lock_value = 1
 
         if ssdp_v4:
             cls._search_lock.acquire()
             cls._search_lock_value += 1
-        if ssdp_v6:
-            cls._search_lock.acquire()
-            cls._search_lock_value += 1
+        #if ssdp_v6:
+        #    cls._search_lock.acquire()
+        #    cls._search_lock_value += 1
 
         cls._search_deviceFoundCallback = staticmethod(foundDeviceCallback)
         cls._search_finishedCallback = staticmethod(finishedCallback)
 
         # Send search requests
-        ssdp_any.sendSearch(**search_params)
-        ssdp_any.stopTimeout(True, timeout)
+        ssdp_v4_any.sendSearch(address=SSDP_ADDR_V4, **search_params)
+        ssdp_v4_any.stopTimeout(True, timeout)
 
+        #ssdp_v6_any.sendSearch(address=SSDP_ADDR_V6, **search_params)
+        #ssdp_v6_any.stopTimeout(True, timeout)
+
+        # Address-bound search requests
         if ssdp_v4:
-            ssdp_v4.sendSearch(**search_params)
+            ssdp_v4.sendSearch(address=SSDP_ADDR_V4, **search_params)
             ssdp_v4.stopTimeout(True, timeout)
 
-        if ssdp_v6:
-            ssdp_v6.sendSearch(**search_params)
-            ssdp_v6.stopTimeout(True, timeout)
+        #if ssdp_v6:
+        #    ssdp_v6.sendSearch(address=SSDP_ADDR_V6, **search_params)
+        #    ssdp_v6.stopTimeout(True, timeout)
 
     @classmethod
     def _search_stopped(cls, devices):
@@ -127,7 +143,7 @@ class SSDP_Device(DatagramProtocol):
     #
 
     def sendRequest(self, method, headers, repeat=0,
-                    address=SSDP_ADDR, port=SSDP_PORT):
+                    address=SSDP_ADDR_V4, port=SSDP_PORT):
         headers['HOST'] = '%s:%d' % (address, port)
 
         msg = '%s * HTTP/1.1\r\n' % method
@@ -139,7 +155,7 @@ class SSDP_Device(DatagramProtocol):
             self.transport.write(msg, (address, port))
 
     def sendSearch(self, mx=5, target='ssdp:all', repeat=1,
-                    address=SSDP_ADDR, port=SSDP_PORT):
+                    address=SSDP_ADDR_V4, port=SSDP_PORT):
         self.sendRequest('M-SEARCH', {
             'MAN': '"ssdp:discover"',
             'MX': mx,
