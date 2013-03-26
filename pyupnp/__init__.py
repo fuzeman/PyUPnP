@@ -38,8 +38,8 @@ if __name__ == '__main__':
                 print
                 for schema, types in dv.services.items():
                     print '\t', schema
-                    for type, versions in types.items():
-                        print '\t\t', type
+                    for service_type, versions in types.items():
+                        print '\t\t', service_type
                         for version, s in versions.items():
                             print '\t\t\t', version
 

@@ -197,8 +197,9 @@ class SSDP_Device(DatagramProtocol):
                 return
 
             # Parse USN
-            uuid, root, schema, name, device_type, version = (None, None, None,
-                                                              None, None, None)
+            uuid, root, schema, name, service_type, service_version = (
+                None, None, None, None, None, None
+            )
             parsedUsn = parse_usn(headers['usn'])
             if not parsedUsn:
                 return
@@ -211,11 +212,11 @@ class SSDP_Device(DatagramProtocol):
             elif parsedUsn[1]:
                 uuid, root = parsedUsn
             else:
-                uuid, root, schema, name, device_type, version = parsedUsn
+                uuid, root, schema, name, service_type, service_version = parsedUsn
 
             if not self.devices.has_key(uuid):
                 self.devices[uuid] = Device(uuid, headers=headers, found=True)
                 self.foundDeviceCallback(self.devices[uuid])
 
             if not root and name == 'service':
-                self.devices[uuid].set_service(schema, device_type, version)
+                self.devices[uuid].set_service(schema, service_type, service_version)
