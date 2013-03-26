@@ -1,5 +1,5 @@
 from twisted.internet import reactor
-from pyupnp.ssdp import SSDP_MSearch
+from pyupnp.ssdp import SSDP_Device
 from pyupnp.upnp import UPnP, Device
 
 __author__ = 'Dean Gardiner'
@@ -15,7 +15,7 @@ if __name__ == '__main__':
     def gotDescription(device):
         print "gotDescription", device
 
-    def finishedSearching(devices):
+    def finished(devices):
         print "finishedSearching"
         print
 
@@ -52,6 +52,9 @@ if __name__ == '__main__':
                                 print '\t\t\t\t\tSCPDURL:', s.SCPDURL
             print
 
-    SSDP_MSearch.search(foundDevice, finishedSearching)
+    SSDP_Device.search(
+        foundDeviceCallback=foundDevice,
+        finishedCallback=finished
+    )
 
     reactor.run()

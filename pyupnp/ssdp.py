@@ -1,7 +1,8 @@
+from threading import Semaphore, Event
 from twisted.internet import reactor
 from twisted.internet.protocol import DatagramProtocol
 from pyupnp.upnp import Device
-from pyupnp.util import http_parse_raw
+from pyupnp.util import http_parse_raw, get_default_v6_address, get_default_v4_address, parse_usn, header_exists
 
 __author__ = 'Dean Gardiner'
 
@@ -9,80 +10,180 @@ SSDP_ADDR = "239.255.255.250"
 SSDP_PORT = 1900
 
 
-class SSDP_MSearch(DatagramProtocol):
-    def __init__(self, cbFoundDevice=None, cbFinishedSearching=None, debug=False):
-        self.port = None
-        self.running = False
-        self.debug = debug
+class SSDP_Device(DatagramProtocol):
+    _search_devices = {}
+    _search_lock = Semaphore(3)
+    _search_lock_value = 0
+    _search_deviceFoundCallback = None
+    _search_finishedCallback = None
 
+    def __init__(self):
         self.stopCall = None
-        self.stopDelay = 10
-
-        self.cbFoundDevice = cbFoundDevice
-        self.cbFinishedSearching = cbFinishedSearching
 
         self.devices = {}
 
-    @staticmethod
-    def search(cbFoundDevice=None, cbFinishedSearching=None, target='ssdp:all', mx=5, stopDelay=10, debug=False):
-        s = SSDP_MSearch(cbFoundDevice, cbFinishedSearching, debug=debug)
-        s.listen()
+        # Callbacks
+        self.foundDeviceCallback = None
+        self.stoppedCallback = None
 
-        s.sendDiscover(target=target, mx=mx)
-        s.sendDiscover(target=target, mx=mx)
+    #
+    # Class Methods
+    #
 
-        s.stopLater(construct=True, delay=stopDelay)
+    @classmethod
+    def createListener(cls, address='', foundDeviceCallback=None, stoppedCallback=None):
+        ssdp = SSDP_Device()
+        ssdp.foundDeviceCallback = foundDeviceCallback
+        ssdp.stoppedCallback = stoppedCallback
+        ssdp.listen(address)
+        return ssdp
 
-    def discover(self, target='ssdp:all', mx=5):
-        self.sendDiscover(target=target, mx=mx)
-        self.sendDiscover(target=target, mx=mx)
+    @classmethod
+    def search(cls, mx=1, target='ssdp:all', repeat=1,
+               foundDeviceCallback=None, finishedCallback=None,
+               address=SSDP_ADDR, port=SSDP_PORT, timeout=1):
+        address_v4 = get_default_v4_address()
+        address_v6 = get_default_v6_address()
 
-        self.stopLater(construct=True, delay=self.stopDelay)
+        ssdp_any = SSDP_Device.createListener('', cls._search_deviceFound,
+                                              cls._search_stopped)
 
-    def listen(self):
-        self._log("listen()")
-        self.port = reactor.listenUDP(0, self)
+        ssdp_v4 = None
+        if address_v4:
+            ssdp_v4 = SSDP_Device.createListener(
+                address_v4,
+                cls._search_deviceFound,
+                cls._search_stopped
+            )
+
+        ssdp_v6 = None
+        if address_v6:
+            ssdp_v6 = SSDP_Device.createListener(
+                address_v6,
+                cls._search_deviceFound,
+                cls._search_stopped
+            )
+
+        search_params = {
+            'mx': mx,
+            'target': target,
+            'repeat': repeat,
+
+            'address': address,
+            'port': port,
+        }
+
+        # Acquire looks before sending any search
+        cls._search_lock.acquire()
+        cls._search_lock_value = 1
+
+        if ssdp_v4:
+            cls._search_lock.acquire()
+            cls._search_lock_value += 1
+        if ssdp_v6:
+            cls._search_lock.acquire()
+            cls._search_lock_value += 1
+
+        cls._search_deviceFoundCallback = staticmethod(foundDeviceCallback)
+        cls._search_finishedCallback = staticmethod(finishedCallback)
+
+        # Send search requests
+        ssdp_any.sendSearch(**search_params)
+        ssdp_any.stopTimeout(True, timeout)
+
+        if ssdp_v4:
+            ssdp_v4.sendSearch(**search_params)
+            ssdp_v4.stopTimeout(True, timeout)
+
+        if ssdp_v6:
+            ssdp_v6.sendSearch(**search_params)
+            ssdp_v6.stopTimeout(True, timeout)
+
+    @classmethod
+    def _search_stopped(cls, devices):
+        cls._search_lock_value -= 1
+
+        if cls._search_lock_value == 0:
+            devices = cls._search_devices
+            callback = cls._search_finishedCallback
+
+            cls._search_devices = {}
+            cls._search_deviceFoundCallback = None
+            cls._search_finishedCallback = None
+            cls._search_lock_value = 0
+
+            callback(devices)
+
+        cls._search_lock.release()  # Release the ssdp search lock
+
+    @classmethod
+    def _search_deviceFound(cls, device):
+        if device.uuid not in cls._search_devices:
+            cls._search_devices[device.uuid] = device
+            cls._search_deviceFoundCallback(device)
+
+    #
+    # Instance Methods
+    #
+
+    def sendRequest(self, method, headers, repeat=0,
+                    address=SSDP_ADDR, port=SSDP_PORT):
+        headers['HOST'] = '%s:%d' % (address, port)
+
+        msg = '%s * HTTP/1.1\r\n' % method
+        for hk, hv in headers.items():
+            msg += str(hk) + ': ' + str(hv) + '\r\n'
+        msg += '\r\n\r\n'
+
+        for x in xrange(repeat + 1):
+            self.transport.write(msg, (address, port))
+
+    def sendSearch(self, mx=5, target='ssdp:all', repeat=1,
+                    address=SSDP_ADDR, port=SSDP_PORT):
+        self.sendRequest('M-SEARCH', {
+            'MAN': '"ssdp:discover"',
+            'MX': mx,
+            'ST': target,
+        }, repeat, address, port)
+
+    def listen(self, address=''):
+        self.port = reactor.listenUDP(0, self, address)
         self.running = True
 
-    def stopLater(self, construct=False, delay=None):
-        if delay:
-            self.stopDelay = delay
+    def stop(self):
+        if not self.running:
+            return
 
+        self.port.stopListening()
+        self.running = False
+
+        if self.stoppedCallback:
+            self.stoppedCallback(self.devices)
+
+    def stopTimeout(self, construct=False, timeout=10):
         if self.stopCall or construct:
             if self.stopCall:
                 self.stopCall.cancel()
-            self.stopCall = reactor.callLater(self.stopDelay, self.stop)
+            self.stopCall = reactor.callLater(timeout, self.stop)
 
-    def stop(self):
-        self._log("stop()")
-        self.port.stopListening()
-        self.running = False
-        if self.cbFinishedSearching:
-            self.cbFinishedSearching(self.devices)
-
-    def _log(self, *message):
-        if self.debug:
-            for m in list(message):
-                print m,
-            print
-
-    def datagramReceived(self, data, (host, port)):
-        self.stopLater()  # Reset Stop Delay
+    def datagramReceived(self, data, (address, port)):
+        self.stopTimeout()  # Reset stop timeout
 
         version, respCode, respText, headers = http_parse_raw(data)
 
         if respCode == 200:
             valid = True
-            valid = valid and self.header_exists(headers, 'usn')
-            valid = valid and self.header_exists(headers, 'location')
-            valid = valid and self.header_exists(headers, 'server')
+            valid = valid and header_exists(headers, 'usn')
+            valid = valid and header_exists(headers, 'location')
+            valid = valid and header_exists(headers, 'server')
 
             if not valid:
                 return
 
             # Parse USN
-            uuid, root, schema, name, type, version = None, None, None, None, None, None
-            parsedUsn = self.parse_usn(headers['usn'])
+            uuid, root, schema, name, device_type, version = (None, None, None,
+                                                              None, None, None)
+            parsedUsn = parse_usn(headers['usn'])
             if not parsedUsn:
                 return
             if len(parsedUsn) == 1:
@@ -94,67 +195,11 @@ class SSDP_MSearch(DatagramProtocol):
             elif parsedUsn[1]:
                 uuid, root = parsedUsn
             else:
-                uuid, root, schema, name, type, version = parsedUsn
+                uuid, root, schema, name, device_type, version = parsedUsn
 
             if not self.devices.has_key(uuid):
                 self.devices[uuid] = Device(uuid, headers=headers, found=True)
-                self.cbFoundDevice(self.devices[uuid])
+                self.foundDeviceCallback(self.devices[uuid])
 
             if not root and name == 'service':
-                self.devices[uuid].set_service(schema, type, version)
-
-    @staticmethod
-    def header_exists(headers, key):
-        if not key in headers.keys():
-            return False
-        return True
-
-    @staticmethod
-    def parse_usn(usn):
-        usn_split = str(usn).split('::')
-
-        uuid = None
-        # Parse UUID
-        if len(usn_split) > 0 and usn_split[0].startswith('uuid:'):
-            _tmp = usn_split[0].index('uuid:') + 5
-            if ':' in usn_split[0][_tmp:]:
-                return None
-            uuid = usn_split[0][_tmp:]
-
-        schema = None
-        name = None
-        type = None
-        version = None
-        # Parse URN / upnp:rootdevice
-        if len(usn_split) > 1:
-            _urn = usn_split[1].split(':')
-
-            # sanity check
-            if len(_urn) <= 0:
-                return None
-
-            if _urn[0] == 'upnp':
-                if len(_urn) != 2:
-                    return None
-                return uuid, True  # [1] = Root?
-            elif _urn[0] == 'urn':
-                if len(_urn) != 5:
-                    return None
-                schema = _urn[1]
-                name = _urn[2].lower()
-                type = _urn[3]
-                version = _urn[4]
-
-                return uuid, False, schema, name, type, version  # [1] = Root?
-
-        return uuid,  # [1] = urn type
-
-    def sendDiscover(self, target='ssdp:all', mx=5):
-        msg = '\r\n'.join(['M-SEARCH * HTTP/1.1',
-                           'HOST: %s:%d' % (SSDP_ADDR, SSDP_PORT),
-                           'MAN: "ssdp:discover"',
-                           'MX: %d' % mx,
-                           'ST: %s' % target,
-                           '', ''])
-
-        self.transport.write(msg, (SSDP_ADDR, SSDP_PORT))
+                self.devices[uuid].set_service(schema, device_type, version)
