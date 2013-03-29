@@ -1,12 +1,14 @@
+import sys
 from twisted.internet import reactor
 from pyupnp.ssdp import SSDP_Device
-from pyupnp.upnp import UPnP, Device
+from pyupnp.upnp import DeviceDescription, UPnP_Device
+from pyupnp.util import get_default_v4_address
 
 __author__ = 'Dean Gardiner'
 
 PRINT_SERVICES = False
 
-if __name__ == '__main__':
+def search():
     devices = {}
 
     def foundDevice(device):
@@ -21,7 +23,7 @@ if __name__ == '__main__':
 
         for dk, dv in devices.items():
             print dv
-            UPnP.deviceDescription(dv)  # Get Device Description
+            dv.load()  # Get Device Description
             print '\tLocation:', dv.location
             print '\tServer:', dv.server
             print
@@ -56,5 +58,29 @@ if __name__ == '__main__':
         foundDeviceCallback=foundDevice,
         finishedCallback=finished
     )
+
+
+def upnp_device():
+    device = UPnP_Device('2fac1234-31f8-11b4-a222-08002b34c003')
+    device.description.friendlyName = "PyUPnP (DG-VAIO)"
+    device.description.configID = 3
+    device.description.server = "Microsoft-Windows/6.2 UPnP/1.0 PyUPnP/0.8a"
+    device.listen()
+
+    #address_v4 = get_default_v4_address()
+    #ssdp = SSDP_Device.createListener(address_v4)
+    #ssdp.description = DeviceDescription('2fac1234-31f8-11b4-a222-08002b34c003')
+    #ssdp.sendNotify('upnp:rootdevice', 'uuid:' + ssdp.description.uuid + '::upnp:rootdevice')
+    #ssdp.sendNotify('upnp:rootdevice', 'uuid:' + ssdp.description.uuid + '::upnp:rootdevice')
+
+if __name__ == '__main__':
+    mode = 'search'
+    if len(sys.argv) > 1:
+        mode = sys.argv[1]
+
+    if mode == 'upnp':
+        upnp_device()
+    else:
+        search()
 
     reactor.run()

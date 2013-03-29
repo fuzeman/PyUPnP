@@ -1,5 +1,6 @@
 import socket
 import urlparse
+import xml.etree.ElementTree as et
 
 __author__ = 'Dean Gardiner'
 
@@ -42,10 +43,17 @@ def get_default_address(host):
 
 
 def get_default_v4_address():
-    return get_default_address("ipv4.google.com")
+    return get_default_address("8.8.8.8")
+
+
+def make_element(name, text):
+    elem = et.Element(name)
+    elem.text = text
+    return elem
 
 
 def get_default_v6_address():
+    # TODO: Fix so this works when internet is inaccessible
     return get_default_address("ipv6.google.com")
 
 
