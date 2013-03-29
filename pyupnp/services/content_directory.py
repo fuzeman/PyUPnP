@@ -4,6 +4,9 @@ from pyupnp.services import Service, ServiceActionArgument,\
 
 class ContentDirectoryService(Service):
     version = (1, 0)
+    serviceType = "urn:schemas-upnp-org:service:ContentDirectory:1"
+    serviceId = "urn:upnp-org:serviceId:ContentDirectory"
+
     actions = {
         'Browse': [
             ServiceActionArgument('ObjectID',           'in',   'A_ARG_TYPE_ObjectID'),

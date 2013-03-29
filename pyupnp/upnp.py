@@ -73,56 +73,7 @@ class UPnP_HTTP_DeviceDescription(Resource):
     def render(self, request):
         request.setHeader('Content-Type', 'application/xml')
         print "rendering \"device.xml\""
-        return '\r\n'.join([
-            '<?xml version="1.0"?>',
-            '<root xmlns="urn:schemas-upnp-org:device-1-0" configId="%s">' % self.device.description.configID,
-                '<specVersion>',
-                    '<major>1</major>',
-                    '<minor>0</minor>',
-                '</specVersion>',
-                '<device>',
-                    '<deviceType>urn:schemas-upnp-org:device:MediaServer:1</deviceType>',
-                    '<friendlyName>%s</friendlyName>' % self.device.description.friendlyName,
-
-                    '<manufacturer>PyUPnP</manufacturer>',
-                    '<manufacturerURL>http://github.com/fuzeman/PyUPnP</manufacturerURL>',
-
-                    #'<modelDescription>PyUPnP</modelDescription>',
-                    '<modelName>PyUPnP</modelName>',
-                    #'<modelNumber>0.8a</modelNumber>',
-                    #'<modelURL>http://github.com/fuzeman/PyUPnP</modelURL>',
-
-                    #'<serialNumber></serialNumber>',
-                    '<UDN>uuid:%s</UDN>' % self.device.description.uuid,
-                    #'<UPC></UPC>',
-                    '<iconList>',
-                        '<icon>',
-                            '<mimetype>image/png</mimetype>',
-                            '<width>32</width>',
-                            '<height>32</height>',
-                            '<depth>24</depth>',
-                            '<url>http://172.25.3.103:52323/MediaRenderer_32x32.png</url>',
-                        '</icon>',
-                    '</iconList>',
-                    '<serviceList>',
-                        '<service>'
-                            '<serviceType>urn:schemas-upnp-org:service:ContentDirectory:1</serviceType>'
-                            '<serviceId>urn:upnp-org:serviceId:ContentDirectory</serviceId>'
-                            '<controlURL>/control</controlURL>'
-                            '<eventSubURL>/event</eventSubURL>'
-                            '<SCPDURL>/ContentDirectory.xml</SCPDURL>'
-                        '</service>',
-                        '<service>'
-                            '<serviceType>urn:schemas-upnp-org:service:ConnectionManager:1</serviceType>'
-                            '<serviceId>urn:upnp-org:serviceId:ConnectionManager</serviceId>'
-                            '<controlURL>/control</controlURL>'
-                            '<eventSubURL>/event</eventSubURL>'
-                            '<SCPDURL>/ConnectionManager.xml</SCPDURL>'
-                        '</service>'
-                    '</serviceList>',
-                '</device>',
-            '</root>',
-        ])
+        return None
 
 
 class UPnP_HTTP_ServiceDescription(Resource):

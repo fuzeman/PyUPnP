@@ -4,6 +4,9 @@ from pyupnp.util import make_element
 
 class Service:
     version = (1, 0)
+    serviceType = None
+    serviceId = None
+
     actions = {}
     stateVariables = {}
 
@@ -59,8 +62,8 @@ class Service:
 
         return scpd
 
-    def dumps(self):
-        if self.__class__._description is None:
+    def dumps(self, force=False):
+        if self.__class__._description is None or force:
             self.__class__._description = '<?xml version="1.0" encoding="utf-8"?>' + \
                                           et.tostring(self.dump())
         return self.__class__._description
