@@ -5,6 +5,7 @@ from pyupnp.util import make_element
 class Device:
     version = (1, 0)
 
+    # Description
     deviceType = None
     friendlyName = "PyUPnP Device"
 
@@ -20,9 +21,17 @@ class Device:
 
     _description = None
 
+    # SSDP
+    server = "Microsoft-Windows/6.2 UPnP/1.0 PyUPnP/0.8a"
+
     def __init__(self):
+        # Description
         self.configID = 0
         self.uuid = None
+
+        # SSDP
+        self.bootID = None
+        self.location = None
 
         #: :type: list of UPnP_Service
         self.services = []
@@ -30,8 +39,17 @@ class Device:
         #: :type: list of DeviceIcon
         self.icons = []
 
+        self.namespaces = {
+            '': 'urn:schemas-upnp-org:device-1-0'
+        }
+
+        self.extra_attributes = {}
+
+    def getLocation(self, address):
+        return self.location % address
+
     def get_UDN(self):
-        if self.uuid is not None:
+        if self.uuid is None:
             return None
         return 'uuid:%s' % self.uuid
     UDN = property(get_UDN)
@@ -39,9 +57,14 @@ class Device:
     def dump(self):
         print "dump()"
         root = et.Element('root', attrib={
-            'xmlns': "urn:schemas-upnp-org:device-1-0",
             'configId': str(self.configID)
         })
+        for prefix, namespace in self.namespaces.items():
+            if prefix == '':
+                prefix = 'xmlns'
+            else:
+                prefix = 'xmlns:' + prefix
+            root.attrib[prefix] = namespace
 
         # specVersion
         specVersion = et.Element('specVersion')
@@ -49,18 +72,25 @@ class Device:
         specVersion.append(make_element('minor', str(self.version[1])))
         root.append(specVersion)
 
-        # device
+        root.append(self.dump_device())
+        return root
+
+    def dump_device(self):
         device = et.Element('device')
 
         for attr_name in [
             'deviceType', 'friendlyName',
             'manufacturer', 'manufacturerURL',
             'modelDescription', 'modelName', 'modelNumber', 'modelURL', 'serialNumber',
+            'UDN'
         ]:
             if hasattr(self, attr_name):
                 val = getattr(self, attr_name)
                 if val is not None:
                     device.append(make_element(attr_name, val))
+
+        for name, val in self.extra_attributes.items():
+            device.append(make_element(name, val))
 
         # iconList
         iconList = et.Element('iconList')
@@ -68,22 +98,19 @@ class Device:
             iconList.append(icon.dump())
         device.append(iconList)
 
-
         # serviceList
         serviceList = et.Element('serviceList')
         for service in self.services:
             _service = et.Element('service')
             _service.append(make_element('serviceType', service.serviceType))
             _service.append(make_element('serviceId', service.serviceId))
-            _service.append(make_element('controlURL', '/control/' + service.serviceId))
-            _service.append(make_element('eventSubURL', '/event/' + service.serviceId))
+            _service.append(make_element('controlURL', '/' + service.serviceId + '/control'))
+            _service.append(make_element('eventSubURL', '/' + service.serviceId + '/event'))
             _service.append(make_element('SCPDURL', '/' + service.serviceId))
             serviceList.append(_service)
         device.append(serviceList)
 
-        root.append(device)
-
-        return root
+        return device
 
     def dumps(self, force=False):
         if self.__class__._description is None or force:

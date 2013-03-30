@@ -1,94 +1,62 @@
 from twisted.internet import reactor
 from twisted.web.resource import Resource
 from twisted.web.server import Site
-from pyupnp.data import DeviceDescription
-from pyupnp.ssdp import SSDP_Device
-from pyupnp.util import get_default_v4_address, make_element
-import xml.etree.ElementTree as et
 
 __author__ = 'Dean Gardiner'
 
 
-class UPnP_Device:
-    def __init__(self, uuid):
-        self.description = DeviceDescription(uuid)
+class UPnP(Resource):
+    def __init__(self, device):
+        """UPnP Control Server
 
-        self.ssdp_any = SSDP_Device(self.description)
-        self.ssdp_v4 = SSDP_Device(self.description)
+        :type device: Device
+        """
+        Resource.__init__(self)
 
-    def listen(self, address=''):
-        address_v4 = get_default_v4_address()
-        if not address_v4:
-            raise NotImplementedError()
+        self.device = device
+        self.running = False
 
-        self.http_root = UPnP_HTTP(self)
-        self.http_factory = Site(self.http_root)
-        self.http_port = reactor.listenTCP(0, self.http_factory, interface=address_v4)
-        self.description.location = 'http://' + ':'.join([
-            self.http_port.socket.getsockname()[0], str(self.http_port.socket.getsockname()[1])
-        ]) + '/device.xml'
-        print "UPnP listening on", self.http_port.socket.getsockname()
+    def listen(self, interface=''):
+        if self.running:
+            raise Exception()
 
-        self.ssdp_any.listen()
-        self.ssdp_any.sendNotify(
-            'upnp:rootdevice',
-            'uuid:' + self.description.uuid + '::upnp:rootdevice'
-        )
-
-        self.ssdp_v4.listen(address_v4)
-        self.ssdp_v4.sendNotify(
-            'upnp:rootdevice',
-            'uuid:' + self.description.uuid + '::upnp:rootdevice'
-        )
-
+        print "[UPnP] listen()"
+        self.site = Site(self)
+        self.site_port = reactor.listenTCP(0, self.site, interface=interface)
+        self.listen_address = self.site_port.socket.getsockname()[0]
+        self.listen_port = self.site_port.socket.getsockname()[1]
         self.running = True
+
+        self.device.location = "http://%s:" + str(self.listen_port)
+
+        print "[UPnP] listening on", self.listen_address + ":" + str(self.listen_port)
 
     def stop(self):
         if not self.running:
             return
 
-        self.http_port.stopListening()
+        print "[UPnP] stop()"
+        self.site_port.stopListening()
         self.running = False
 
-
-class UPnP_HTTP(Resource):
-    def __init__(self, device):
-        Resource.__init__(self)
-        self.device = device
-
     def getChild(self, path, request):
-        print "unhandled request", path
+        if path == '':
+            return ServeResource(self.device.dumps(), 'application/xml')
+
+        for service in self.device.services:
+            if path == service.serviceId:
+                return ServeResource(service.dumps(), 'application/xml')
+
+        print "[UPnP] unhandled request", path
         return Resource()
 
 
-class UPnP_HTTP_DeviceDescription(Resource):
-    def __init__(self, device):
-        """
-
-        :type device: UPnP_Device
-        """
+class ServeResource(Resource):
+    def __init__(self, data, mimetype):
         Resource.__init__(self)
-        self.device = device
+        self.data = data
+        self.mimetype = mimetype
 
     def render(self, request):
-        request.setHeader('Content-Type', 'application/xml')
-        print "rendering \"device.xml\""
-        return None
-
-
-class UPnP_HTTP_ServiceDescription(Resource):
-    def __init__(self, device, service):
-        """
-
-        :type device: UPnP_Device
-        """
-        Resource.__init__(self)
-        self.device = device
-
-        self.service = service
-        self.data = self.service.dumps()
-
-    def render(self, request):
-        request.setHeader('Content-Type', 'application/xml')
-        print "rendering \"%s\"" % request.path[1:]
+        request.setHeader('Content-Type', self.mimetype)
         return self.data

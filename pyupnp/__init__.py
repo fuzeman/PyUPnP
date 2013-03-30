@@ -1,7 +1,6 @@
 import sys
 from twisted.internet import reactor
 from pyupnp.ssdp import SSDP_Device
-from pyupnp.upnp import DeviceDescription, UPnP_Device
 from pyupnp.util import get_default_v4_address
 
 __author__ = 'Dean Gardiner'

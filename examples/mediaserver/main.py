@@ -1,7 +1,10 @@
+from twisted.internet import reactor
 from pyupnp.device import Device, DeviceIcon
 from pyupnp.services import register_action
 from pyupnp.services.connection_manager import ConnectionManagerService
 from pyupnp.services.content_directory import ContentDirectoryService
+from pyupnp.ssdp import SSDP
+from pyupnp.upnp import UPnP
 
 
 class MediaServerDevice(Device):
@@ -25,6 +28,9 @@ class MediaServerDevice(Device):
                        'http://172.25.3.103:52323/MediaRenderer_32x32.png')
         ]
 
+        self.namespaces['dlna'] = 'urn:schemas-dlna-org:device-1-0'
+        self.extra_attributes['dlna:X_DLNADOC'] = 'DMS-1.50'
+
 
 class MSConnectionManager(ConnectionManagerService):
     def __init__(self):
@@ -37,3 +43,11 @@ class MSContentDirectory(ContentDirectoryService):
 
 if __name__ == '__main__':
     device = MediaServerDevice()
+
+    upnp = UPnP(device)
+    ssdp = SSDP(device)
+
+    upnp.listen()
+    ssdp.listen()
+
+    reactor.run()

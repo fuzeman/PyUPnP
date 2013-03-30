@@ -74,6 +74,13 @@ def header_exists(headers, key):
     return True
 
 
+def headers_join(headers):
+    msg = ""
+    for hk, hv in headers.items():
+        msg += str(hk) + ': ' + str(hv) + '\r\n'
+    return msg
+
+
 def parse_usn(usn):
     usn_split = str(usn).split('::')
 
