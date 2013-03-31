@@ -3,6 +3,7 @@ from pyupnp.device import Device, DeviceIcon
 from pyupnp.services import register_action
 from pyupnp.services.connection_manager import ConnectionManagerService
 from pyupnp.services.content_directory import ContentDirectoryService
+from pyupnp.services.microsoft.media_receiver_registrar import MediaReceiverRegistrarService
 from pyupnp.ssdp import SSDP
 from pyupnp.upnp import UPnP
 
@@ -17,10 +18,12 @@ class MediaServerDevice(Device):
 
         self.connectionManager = MSConnectionManager()
         self.contentDirectory = MSContentDirectory()
+        self.mediaReceiverRegistrar = MSMediaReceiverRegistrar()
 
         self.services = [
             self.connectionManager,
-            self.contentDirectory
+            self.contentDirectory,
+            self.mediaReceiverRegistrar
         ]
 
         self.icons = [
@@ -29,7 +32,7 @@ class MediaServerDevice(Device):
         ]
 
         self.namespaces['dlna'] = 'urn:schemas-dlna-org:device-1-0'
-        self.extra_attributes['dlna:X_DLNADOC'] = 'DMS-1.50'
+        self.extras['dlna:X_DLNADOC'] = 'DMS-1.50'
 
 
 class MSConnectionManager(ConnectionManagerService):
@@ -40,6 +43,11 @@ class MSConnectionManager(ConnectionManagerService):
 class MSContentDirectory(ContentDirectoryService):
     def __init__(self):
         ContentDirectoryService.__init__(self)
+
+
+class MSMediaReceiverRegistrar(MediaReceiverRegistrarService):
+    def __init__(self):
+        MediaReceiverRegistrarService.__init__(self)
 
 if __name__ == '__main__':
     device = MediaServerDevice()

@@ -43,7 +43,7 @@ class Device:
             '': 'urn:schemas-upnp-org:device-1-0'
         }
 
-        self.extra_attributes = {}
+        self.extras = {}
 
     def getLocation(self, address):
         return self.location % address
@@ -89,7 +89,7 @@ class Device:
                 if val is not None:
                     device.append(make_element(attr_name, val))
 
-        for name, val in self.extra_attributes.items():
+        for name, val in self.extras.items():
             device.append(make_element(name, val))
 
         # iconList

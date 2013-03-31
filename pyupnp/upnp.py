@@ -45,9 +45,23 @@ class UPnP(Resource):
 
         for service in self.device.services:
             if path == service.serviceId:
-                return ServeResource(service.dumps(), 'application/xml')
+                return ServiceResource(service)
 
         print "[UPnP] unhandled request", path
+        return Resource()
+
+
+class ServiceResource(Resource):
+    def __init__(self, service):
+        Resource.__init__(self)
+        self.service = service
+
+    def render(self, request):
+        request.setHeader('Content-Type', 'application/xml')
+        return self.service.dumps()
+
+    def getChild(self, path, request):
+        print "[UPnP][" + str(self.service.serviceType) + "] unhandled request", path
         return Resource()
 
 
