@@ -123,5 +123,5 @@ class ContentDirectoryService(Service):
     @register_action('X_GetRemoteSharingStatus')
     def getRemoteSharingStatus(self):
         return {
-            'Status': None
+            'Status': 1
         }
