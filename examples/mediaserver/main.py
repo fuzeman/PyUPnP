@@ -1,3 +1,4 @@
+import uuid
 from twisted.internet import reactor
 from pyupnp.device import Device, DeviceIcon
 from pyupnp.services import register_action
@@ -48,6 +49,7 @@ class MSConnectionManager(ConnectionManagerService):
 class MSContentDirectory(ContentDirectoryService):
     def __init__(self):
         ContentDirectoryService.__init__(self)
+        self.system_update_id = 0
 
 
 class MSMediaReceiverRegistrar(MediaReceiverRegistrarService):

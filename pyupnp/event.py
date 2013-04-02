@@ -33,13 +33,21 @@ class EventProperty(object):
 
         self.initialized = True
 
+        if self.value is None:
+            self.value = self._default()
+
     def _default(self):
         if not self.initialized:
             raise Exception()
 
         if self.state_variable.dataType == 'string':
             return str()
+        if self.state_variable.dataType == 'boolean':
+            return False
+        if self.state_variable.dataType == 'ui4':
+            return 0
 
+        print self.state_variable.dataType
         raise NotImplementedError()
 
     def __get__(self, instance, owner):
@@ -56,6 +64,10 @@ class EventProperty(object):
 
         if self.state_variable.dataType == 'string':
             value = str(value)
+        elif self.state_variable.dataType == 'ui4':
+            value = int(value)
+        elif self.state_variable.dataType == 'boolean':
+            value = bool(value)
         else:
             raise NotImplementedError()
 
@@ -105,7 +117,7 @@ class EventSubscription:
 
         for prop in props:
             _property = et.Element('e:property')
-            _property.append(make_element(prop.name, prop.value))
+            _property.append(make_element(prop.name, str(prop.value)))
             _propertyset.append(_property)
 
         data = '<?xml version="1.0"?>' + et.tostring(_propertyset)

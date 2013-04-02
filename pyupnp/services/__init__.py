@@ -64,8 +64,8 @@ class Service(object):
         subscription = EventSubscription(sid, callback, timeout)
 
         # Send initial event property notifications
-        # TODO: calling this is 3 seconds isn't really a great way to do this
-        reactor.callLater(3, subscription.notify, self.event_properties.values())
+        # TODO: calling this is 1 second isn't really a great way to do this
+        reactor.callLater(1, subscription.notify, self.event_properties.values())
 
         self.subscriptions.append(subscription)
 

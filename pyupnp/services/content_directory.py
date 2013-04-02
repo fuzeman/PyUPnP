@@ -1,3 +1,4 @@
+from pyupnp.event import EventProperty
 from pyupnp.services import Service, ServiceActionArgument,\
     register_action, ServiceStateVariable
 
@@ -72,15 +73,20 @@ class ContentDirectoryService(Service):
         ServiceStateVariable('SortCapabilities',            'string'),
         ServiceStateVariable('SystemUpdateID',              'ui4',
                              sendEvents=True),
-        ServiceStateVariable('ContainerUpdateIDs',          'string',
-                             sendEvents=True),
+        #ServiceStateVariable('ContainerUpdateIDs',          'string',
+        #                     sendEvents=True),
         ServiceStateVariable('X_RemoteSharingEnabled',      'boolean',
                              sendEvents=True),
     ]
 
+    system_update_id = EventProperty('SystemUpdateID')
+    #container_update_ids = EventProperty('ContainerUpdateIDs')
+    remote_sharing_enabled = EventProperty('X_RemoteSharingEnabled', 1)
+
     @register_action('Browse')
     def browse(self, objectID, browseFlag, browseFilter, startingIndex,
                requestedCount, sortCriteria):
+        print objectID, browseFlag, browseFilter, startingIndex, requestedCount, sortCriteria
         return {
             'Result': None,
             'NumberReturned': None,
