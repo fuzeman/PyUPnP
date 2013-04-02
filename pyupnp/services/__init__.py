@@ -1,15 +1,21 @@
+import uuid
 import xml.etree.ElementTree as et
+from twisted.internet import reactor
+from pyupnp.event import EventSubscription
 from pyupnp.lict import Lict
 from pyupnp.util import make_element
 
 
-class Service:
+class Service(object):
     version = (1, 0)
     serviceType = None
     serviceId = None
 
     actions = {}
     stateVariables = {}
+
+    event_properties = None
+    subscription_timeout_range = (1800, None)
 
     _description = None
 
@@ -26,6 +32,52 @@ class Service:
             if callable(obj) and hasattr(obj, 'actionName'):
                 setattr(self, attr, ServiceActionWrapper(self, obj))
                 self.actionFunctions[getattr(obj, 'actionName')] = obj
+
+        self.subscriptions = Lict(searchNames='sid')
+        if self.event_properties is None:
+            self.event_properties = Lict(searchNames='name')
+
+    def _generate_subscription_sid(self):
+        result = None
+        retries = 0
+        while result is None and retries < 10:
+            generated_uuid = str(uuid.uuid4())
+            if generated_uuid not in self.subscriptions:
+                result = generated_uuid
+            else:
+                retries += 1
+        if result is None:
+            raise Exception()
+        return result
+
+    def subscribe(self, callback, timeout):
+        sid = 'uuid:' + self._generate_subscription_sid()
+
+        if (self.subscription_timeout_range[0] is not None and
+                timeout < self.subscription_timeout_range[0]):
+            timeout = self.subscription_timeout_range[0]
+
+        if (self.subscription_timeout_range[1] is not None and
+                timeout > self.subscription_timeout_range[1]):
+            timeout = self.subscription_timeout_range[1]
+
+        subscription = EventSubscription(sid, callback, timeout)
+
+        # Send initial event property notifications
+        # TODO: calling this is 3 seconds isn't really a great way to do this
+        reactor.callLater(3, subscription.notify, self.event_properties.values())
+
+        self.subscriptions.append(subscription)
+
+        return {
+            'SID': sid,
+            'TIMEOUT': 'Second-' + str(timeout)
+        }
+
+    def notify(self, prop):
+        for subscription in self.subscriptions:
+            # TODO: Check timeout
+            subscription.notify(prop)
 
     def dump(self):
         print "dump()"

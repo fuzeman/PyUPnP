@@ -11,6 +11,8 @@ from pyupnp.upnp import UPnP
 class MediaServerDevice(Device):
     deviceType = 'urn:schemas-upnp-org:device:MediaServer:1'
 
+    friendlyName = "PyUPnP MediaServer Example"
+
     def __init__(self):
         Device.__init__(self)
 
@@ -38,6 +40,9 @@ class MediaServerDevice(Device):
 class MSConnectionManager(ConnectionManagerService):
     def __init__(self):
         ConnectionManagerService.__init__(self)
+
+        self.source_protocol_info = 'http-get:*:*:*'
+        self.current_connection_ids = '0'
 
 
 class MSContentDirectory(ContentDirectoryService):

@@ -1,3 +1,4 @@
+from pyupnp.event import EventProperty
 from pyupnp.services import Service, register_action,\
     ServiceActionArgument, ServiceStateVariable
 
@@ -53,6 +54,10 @@ class ConnectionManagerService(Service):
         ServiceStateVariable('CurrentConnectionIDs',            'string',
                              sendEvents=True),
     ]
+
+    source_protocol_info = EventProperty('SourceProtocolInfo')
+    sink_protocol_info = EventProperty('SinkProtocolInfo')
+    current_connection_ids = EventProperty('CurrentConnectionIDs')
 
     @register_action('GetProtocolInfo')
     def getProtocolInfo(self):

@@ -74,6 +74,31 @@ class ServiceEventResource(Resource):
         Resource.__init__(self)
         self.service = service
 
+    def _getHeader(self, request, name, required=True, default=None):
+        result = request.requestHeaders.getRawHeaders(name)
+        if len(result) != 1:
+            if required:
+                raise KeyError()
+            else:
+                return default
+        return result[0]
+
+    def _parse_nt(self, value):
+        if value != 'upnp:event':
+            raise ValueError()
+        return value
+
+    def _parse_callback(self, value):
+        # TODO: Support multiple callbacks as per UPnP 1.1
+        if '<' not in value or '>' not in value:
+            raise ValueError()
+        return value[value.index('<')+1:value.index('>')]
+
+    def _parse_timeout(self, value):
+        if not value.startswith('Second-'):
+            raise ValueError()
+        return int(value[7:])
+
     def render(self, request):
         try:
             return Resource.render(self, request)
@@ -84,7 +109,25 @@ class ServiceEventResource(Resource):
 
     def render_SUBSCRIBE(self, request):
         print "[UPnP][" + str(self.service.serviceType) + "][Event] SUBSCRIBE"
-        print request.requestHeaders
+
+        if request.requestHeaders.hasHeader('sid'):
+            # Renew
+            raise NotImplementedError()
+        else:
+            # New Subscription
+            nt = self._parse_nt(self._getHeader(request, 'nt'))
+            callback = self._parse_callback(self._getHeader(request, 'callback'))
+            timeout = self._parse_timeout(self._getHeader(request, 'timeout', False))
+
+            print "[UPnP][" + str(self.service.serviceType) + "][Event]", callback, timeout
+
+            responseHeaders = self.service.subscribe(callback, timeout)
+            if responseHeaders is not None and type(responseHeaders) is dict:
+                for name, value in responseHeaders.items():
+                    request.setHeader(name, value)
+                return ''
+            else:
+                print "[UPnP][" + str(self.service.serviceType) + "][Event] SUBSCRIBE FAILED"
 
 
 class ServeResource(Resource):

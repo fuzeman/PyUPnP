@@ -12,5 +12,5 @@ setup(
     author='Dean Gardiner',
     author_email='gardiner91@gmail.com',
     url='http://github.com/fuzeman/PyUPnP',
-    packages=['pyupnp'], requires=['twisted'],
+    packages=['pyupnp'], requires=['twisted', 'requests'],
 )
