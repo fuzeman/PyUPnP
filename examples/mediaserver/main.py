@@ -51,10 +51,35 @@ class MSContentDirectory(ContentDirectoryService):
         ContentDirectoryService.__init__(self)
         self.system_update_id = 0
 
+    @register_action('X_GetRemoteSharingStatus')
+    def getRemoteSharingStatus(self):
+        return {
+            'Status': 1
+        }
+
 
 class MSMediaReceiverRegistrar(MediaReceiverRegistrarService):
     def __init__(self):
         MediaReceiverRegistrarService.__init__(self)
+
+    @register_action('IsAuthorized')
+    def isAuthorized(self, device_id):
+        return {
+            'Result': 1
+        }
+
+    @register_action('RegisterDevice')
+    def registerDevice(self, request):
+        print "RegisterDevice not implemented"
+        return {
+            'RegistrationRespMsg': None
+        }
+
+    @register_action('IsValidated')
+    def isValidated(self, device_id):
+        return {
+            'Result': None
+        }
 
 if __name__ == '__main__':
     device = MediaServerDevice()

@@ -86,48 +86,29 @@ class ContentDirectoryService(Service):
     @register_action('Browse')
     def browse(self, objectID, browseFlag, browseFilter, startingIndex,
                requestedCount, sortCriteria):
-        print objectID, browseFlag, browseFilter, startingIndex, requestedCount, sortCriteria
-        return {
-            'Result': None,
-            'NumberReturned': None,
-            'TotalMatches': None,
-            'UpdateID': None
-        }
+        raise NotImplementedError()
 
     @register_action('GetSearchCapabilities')
     def getSearchCapabilities(self):
-        return {
-            'SearchCaps': None
-        }
+        raise NotImplementedError()
 
     @register_action('GetSortCapabilities')
     def getSortCapabilities(self):
-        return {
-            'SortCaps': None
-        }
+        raise NotImplementedError()
 
     @register_action('GetSystemUpdateID')
     def getSystemUpdateID(self):
-        return {
-            'Id': None
-        }
+        raise NotImplementedError()
 
     @register_action('UpdateObject')
     def updateObject(self, objectID, currentTagValue, newTagValue):
-        pass
+        raise NotImplementedError()
 
     @register_action('Search')
     def search(self, containerID, searchCriteria, searchFilter, startingIndex,
                requestedCount, sortCriteria):
-        return {
-            'Result': None,
-            'NumberReturned': None,
-            'TotalMatches': None,
-            'UpdateID': None
-        }
+        raise NotImplementedError()
 
     @register_action('X_GetRemoteSharingStatus')
     def getRemoteSharingStatus(self):
-        return {
-            'Status': 1
-        }
+        raise NotImplementedError()

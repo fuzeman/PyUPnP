@@ -61,25 +61,12 @@ class ConnectionManagerService(Service):
 
     @register_action('GetProtocolInfo')
     def getProtocolInfo(self):
-        return {
-            'Source': None,
-            'Sink': None
-        }
+        raise NotImplementedError()
 
     @register_action('GetCurrentConnectionIDs')
     def getCurrentConnectionIDs(self):
-        return {
-            'ConnectionIDs': None
-        }
+        raise NotImplementedError()
 
     @register_action('GetCurrentConnectionInfo')
     def getCurrentConnectionInfo(self, connectionID):
-        return {
-            'RcsID': None,
-            'AVTransportID': None,
-            'ProtocolInfo': None,
-            'PeerConnectionManager': None,
-            'PeerConnectionID': None,
-            'Direction': None,
-            'Status': None
-        }
+        raise NotImplementedError()

@@ -40,19 +40,12 @@ class MediaReceiverRegistrarService(Service):
 
     @register_action('IsAuthorized')
     def isAuthorized(self, device_id):
-        return {
-            'Result': 1
-        }
+        raise NotImplementedError()
 
     @register_action('RegisterDevice')
     def registerDevice(self, request):
-        print "RegisterDevice not implemented"
-        return {
-            'RegistrationRespMsg': None
-        }
+        raise NotImplementedError()
 
     @register_action('IsValidated')
     def isValidated(self, device_id):
-        return {
-            'Result': None
-        }
+        raise NotImplementedError()
