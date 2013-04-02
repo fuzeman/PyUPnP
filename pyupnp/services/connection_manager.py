@@ -28,12 +28,7 @@ class ConnectionManagerService(Service):
         ],
     }
     stateVariables = [
-        ServiceStateVariable('SourceProtocolInfo',              'string',
-                             sendEvents=True),
-        ServiceStateVariable('SinkProtocolInfo',                'string',
-                             sendEvents=True),
-        ServiceStateVariable('CurrentConnectionIDs',            'string',
-                             sendEvents=True),
+        # Arguments
         ServiceStateVariable('A_ARG_TYPE_ConnectionStatus',     'string', [
             'OK',
             'ContentFormatMismatch',
@@ -49,6 +44,14 @@ class ConnectionManagerService(Service):
         ServiceStateVariable('A_ARG_TYPE_ConnectionID',         'i4'),
         ServiceStateVariable('A_ARG_TYPE_AVTransportID',        'i4'),
         ServiceStateVariable('A_ARG_TYPE_RcsID',                'i4'),
+
+        # Variables
+        ServiceStateVariable('SourceProtocolInfo',              'string',
+                             sendEvents=True),
+        ServiceStateVariable('SinkProtocolInfo',                'string',
+                             sendEvents=True),
+        ServiceStateVariable('CurrentConnectionIDs',            'string',
+                             sendEvents=True),
     ]
 
     @register_action('GetProtocolInfo')

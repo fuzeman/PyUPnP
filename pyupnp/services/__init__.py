@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as et
+from pyupnp.lict import Lict
 from pyupnp.util import make_element
 
 
@@ -13,12 +14,10 @@ class Service:
     _description = None
 
     def __init__(self):
-        # Map state variables into a dictionary
-        if type(self.__class__.stateVariables) is list:
-            variables = self.__class__.stateVariables
-            self.__class__.stateVariables = {}
-            for v in variables:
-                self.__class__.stateVariables[v.name] = v
+        self.__class__.stateVariables = Lict(self.__class__.stateVariables)
+
+        for name, arguments in self.__class__.actions.items():
+            self.__class__.actions[name] = Lict(arguments)
 
         # Build action function map
         self.actionFunctions = {}

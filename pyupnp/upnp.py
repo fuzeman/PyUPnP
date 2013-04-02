@@ -1,4 +1,5 @@
 from twisted.internet import reactor
+from twisted.web.error import UnsupportedMethod
 from twisted.web.resource import Resource
 from twisted.web.server import Site
 
@@ -61,8 +62,29 @@ class ServiceResource(Resource):
         return self.service.dumps()
 
     def getChild(self, path, request):
+        if path == 'event':
+            return ServiceEventResource(self.service)
+
         print "[UPnP][" + str(self.service.serviceType) + "] unhandled request", path
         return Resource()
+
+
+class ServiceEventResource(Resource):
+    def __init__(self, service):
+        Resource.__init__(self)
+        self.service = service
+
+    def render(self, request):
+        try:
+            return Resource.render(self, request)
+        except UnsupportedMethod, e:
+            print "[UPnP][" + str(self.service.serviceType) + "] unhandled method",\
+                request.method
+            raise e
+
+    def render_SUBSCRIBE(self, request):
+        print "[UPnP][" + str(self.service.serviceType) + "][Event] SUBSCRIBE"
+        print request.requestHeaders
 
 
 class ServeResource(Resource):

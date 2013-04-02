@@ -139,6 +139,21 @@ class Lict():
         else:
             raise NotImplementedError()
 
+    def __contains__(self, item):
+        if self._priority is list:
+            if item in self._col_list:
+                return True
+            if item in self._col_dict:
+                return True
+            return False
+        elif self._priority is dict:
+            if item in self._col_dict:
+                return True
+            if item in self._col_list:
+                return True
+            return False
+        raise NotImplementedError()
+
     def __repr__(self):
         if self._priority is dict:
             return repr(self._col_dict)
@@ -188,6 +203,10 @@ class Lict():
         L.index(value, [start, [stop]]) -> integer -- return first index of value.
         Raises ValueError if the value is not present.
         """
+        if start is None:
+            start = 0
+        if stop is None:
+            stop = len(self._col_list)
         return self._col_list.index(value, start, stop)
 
     def insert(self, index, p_object):

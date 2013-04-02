@@ -53,6 +53,7 @@ class ContentDirectoryService(Service):
         ],
     }
     stateVariables = [
+        # Arguments
         ServiceStateVariable('A_ARG_TYPE_ObjectID',         'string'),
         ServiceStateVariable('A_ARG_TYPE_Result',           'string'),
         ServiceStateVariable('A_ARG_TYPE_SearchCriteria',   'string'),
@@ -65,6 +66,8 @@ class ContentDirectoryService(Service):
         ServiceStateVariable('A_ARG_TYPE_Count',            'ui4'),
         ServiceStateVariable('A_ARG_TYPE_UpdateID',         'ui4'),
         ServiceStateVariable('A_ARG_TYPE_TagValueList',     'string'),
+
+        # Variables
         ServiceStateVariable('SearchCapabilities',          'string'),
         ServiceStateVariable('SortCapabilities',            'string'),
         ServiceStateVariable('SystemUpdateID',              'ui4',

@@ -21,10 +21,13 @@ class MediaReceiverRegistrarService(Service):
         ],
     }
     stateVariables = [
+        # Arguments
         ServiceStateVariable('A_ARG_TYPE_DeviceID',                 'string'),
         ServiceStateVariable('A_ARG_TYPE_Result',                   'int'),
         ServiceStateVariable('A_ARG_TYPE_RegistrationReqMsg',       'bin.base64'),
         ServiceStateVariable('A_ARG_TYPE_RegistrationRespMsg',      'bin.base64'),
+
+        # Variables
         ServiceStateVariable('AuthorizationGrantedUpdateID',        'ui4',
                              sendEvents=True),
         ServiceStateVariable('AuthorizationDeniedUpdateID',         'ui4',
