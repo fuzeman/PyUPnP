@@ -8,6 +8,8 @@ class ContentDirectoryService(Service):
     serviceType = "urn:schemas-upnp-org:service:ContentDirectory:1"
     serviceId = "urn:upnp-org:serviceId:ContentDirectory"
 
+    subscription_timeout_range = (None, None)
+
     actions = {
         'Browse': [
             ServiceActionArgument('ObjectID',           'in',   'A_ARG_TYPE_ObjectID'),

@@ -86,19 +86,38 @@ class EventSubscription:
 
         self.next_notify_key = 0
 
+        self.expired = False  # subscription has been flagged for deletion
+
     def _increment_notify_key(self):
         if self.next_notify_key >= 4294967295:
             self.next_notify_key = 0
         else:
             self.next_notify_key += 1
 
+    def check_expiration(self):
+        if self.expired is True:
+            return True
+
+        if time.time() > self.last_subscribe + self.timeout:
+            self.expired = True
+            return True
+
+        return False
+
     def notify(self, props):
         """
 
-        :type prop: EventProperty
+        :type props: EventProperty or list of EventProperty
         """
         if type(props) is not list:
             props = [props]
+
+        if self.expired:
+            return
+
+        if self.check_expiration():
+            print "[EventSubscription] expired"
+            return
 
         print "[EventSubscription] notify()", props
 
@@ -122,6 +141,9 @@ class EventSubscription:
 
         data = '<?xml version="1.0"?>' + et.tostring(_propertyset)
 
-        requests.request('NOTIFY', self.callback,
-                         headers=headers, data=data)
+        try:
+            requests.request('NOTIFY', self.callback,
+                             headers=headers, data=data)
+        except requests.exceptions.ConnectionError:
+            pass
         self._increment_notify_key()

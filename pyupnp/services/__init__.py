@@ -75,9 +75,12 @@ class Service(object):
         }
 
     def notify(self, prop):
-        for subscription in self.subscriptions:
-            # TODO: Check timeout
-            subscription.notify(prop)
+        for sid in self.subscriptions.keys():
+            subscription = self.subscriptions[sid]
+            if subscription.expired:
+                self.subscriptions.popvalue(sid)
+            else:
+                subscription.notify(prop)
 
     def dump(self):
         print "dump()"

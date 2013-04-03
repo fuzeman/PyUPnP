@@ -1,4 +1,5 @@
 import uuid
+import time
 from twisted.internet import reactor
 from pyupnp.device import Device, DeviceIcon
 from pyupnp.services import register_action
@@ -89,5 +90,11 @@ if __name__ == '__main__':
 
     upnp.listen()
     ssdp.listen()
+
+    def event_test():
+        device.contentDirectory.system_update_id = time.time()
+        reactor.callLater(5, event_test)
+
+    event_test()
 
     reactor.run()

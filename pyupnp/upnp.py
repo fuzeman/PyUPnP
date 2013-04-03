@@ -1,8 +1,10 @@
 from SOAPpy import parseSOAPRPC, buildSOAP
+import time
 from twisted.internet import reactor
 from twisted.web.error import UnsupportedMethod
 from twisted.web.resource import Resource
 from twisted.web.server import Site
+from pyupnp.util import twisted_absolute_path
 
 __author__ = 'Dean Gardiner'
 
@@ -52,6 +54,9 @@ class UPnP(Resource):
         self.running = False
 
     def getChild(self, path, request):
+        # Hack to fix twisted not accepting absolute URIs
+        path, request = twisted_absolute_path(path, request)
+
         if path == '':
             return ServeResource(self.device.dumps(), 'application/xml')
 
@@ -161,7 +166,13 @@ class ServiceEventResource(Resource):
 
         if request.requestHeaders.hasHeader('sid'):
             # Renew
-            raise NotImplementedError()
+            sid = getHeader(request, 'sid')
+            if sid in self.service.subscriptions:
+                self.service.subscriptions[sid].last_subscribe = time.time()
+                self.service.subscriptions[sid].expired = False
+                print "[UPnP][" + str(self.service.serviceType) + "][Event] Successfully renewed subscription"
+            else:
+                print "[UPnP][" + str(self.service.serviceType) + "][Event] Received invalid subscription renewal"
         else:
             # New Subscription
             nt = self._parse_nt(getHeader(request, 'nt'))
@@ -177,6 +188,20 @@ class ServiceEventResource(Resource):
                 return ''
             else:
                 print "[UPnP][" + str(self.service.serviceType) + "][Event] SUBSCRIBE FAILED"
+
+    def render_UNSUBSCRIBE(self, request):
+        print "[UPnP][" + str(self.service.serviceType) + "][Event] UNSUBSCRIBE"
+
+        if request.requestHeaders.hasHeader('sid'):
+            # Cancel
+            sid = getHeader(request, 'sid')
+            if sid in self.service.subscriptions:
+                self.service.subscriptions[sid].expired = True
+                print "[UPnP][" + str(self.service.serviceType) + "][Event] Successfully unsubscribed"
+            else:
+                print "[UPnP][" + str(self.service.serviceType) + "][Event] Received invalid UNSUBSCRIBE request"
+        else:
+            print "[UPnP][" + str(self.service.serviceType) + "][Event] Received invalid UNSUBSCRIBE request"
 
 
 class ServeResource(Resource):

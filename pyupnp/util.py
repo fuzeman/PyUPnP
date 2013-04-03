@@ -5,6 +5,17 @@ import xml.etree.ElementTree as et
 __author__ = 'Dean Gardiner'
 
 
+def twisted_absolute_path(path, request):
+    """Hack to fix twisted not accepting absolute URIs"""
+    parsed = urlparse.urlparse(request.uri)
+    if parsed.scheme != '':
+        path_parts = parsed.path.lstrip('/').split('/')
+        request.prepath = path_parts[0:1]
+        request.postpath = path_parts[1:]
+        path = request.prepath[0]
+    return path, request
+
+
 def http_parse_raw(data):
     lines = data.split('\r\n')
 
