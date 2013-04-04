@@ -1,5 +1,5 @@
 # PyUPnP - Simple Python UPnP device library built in Twisted
-# Copyright (C) 2013  fuzeman <gardiner91@gmail.com>
+# Copyright (C) 2013  Dean Gardiner <gardiner91@gmail.com>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
