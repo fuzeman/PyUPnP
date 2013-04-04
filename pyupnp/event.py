@@ -2,6 +2,7 @@ import time
 import requests
 import xml.etree.ElementTree as et
 from pyupnp.lict import Lict
+from pyupnp.logr import Logr
 from pyupnp.util import make_element
 
 
@@ -47,7 +48,7 @@ class EventProperty(object):
         if self.state_variable.dataType == 'ui4':
             return 0
 
-        print self.state_variable.dataType
+        Logr.warning(self.state_variable.dataType + "not implemented")
         raise NotImplementedError()
 
     def __get__(self, instance, owner):
@@ -116,12 +117,11 @@ class EventSubscription:
             return
 
         if self.check_expiration():
-            print "[EventSubscription] expired"
+            Logr.info("(%s) subscription expired", self.sid)
             return
 
-        print "[EventSubscription] notify()", props
-
-
+        # noinspection PyTypeChecker
+        Logr.debug("(%s) notify(), %d props: %s", self.sid, len(props), str(props))
 
         headers = {
             'NT': 'upnp:event',

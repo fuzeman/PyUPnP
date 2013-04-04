@@ -3,6 +3,7 @@ import socket
 import time
 from twisted.internet import reactor, task
 from twisted.internet.protocol import DatagramProtocol
+from pyupnp.logr import Logr
 from pyupnp.util import (http_parse_raw, get_default_v4_address,
                          headers_join, build_notification_type)
 
@@ -46,12 +47,12 @@ class SSDP:
         self.listener = SSDP_Listener(self, self.interfaces)
 
     def listen(self):
-        print "[SSDP] listen()"
+        Logr.debug("listen()")
         self.clients.listen()
         self.listener.listen()
 
     def stop(self):
-        print "[SSDP] stop()"
+        Logr.debug("stop()")
         self.clients.stop()
         self.listener.stop()
 
@@ -65,12 +66,12 @@ class SSDP_ClientsInterface:
         self.clients = clients
 
     def listen(self):
-        print "[SSDP_ClientsInterface] listen()"
+        Logr.debug("listen()")
         for client in self.clients:
             client.listen()
 
     def stop(self):
-        print "[SSDP_ClientsInterface] stop()"
+        Logr.debug("stop()")
         for client in self.clients:
             client.stop()
 
@@ -96,16 +97,16 @@ class SSDP_Client(DatagramProtocol):
         if self.running:
             raise Exception()
 
-        print "[SSDP_Client] listen()"
+        Logr.debug("listen()")
         self.listen_port = reactor.listenUDP(0, self, self.interface)
         self.running = True
-        print "[SSDP_Client] listening on", self.listen_port.socket.getsockname()
+        Logr.debug("listening on %s", self.listen_port.socket.getsockname())
 
         reactor.callLater(0, self._notifySequenceCall, True)
         self.notifySequenceLoop.start(self.notifySequenceInterval)
 
     def stop(self):
-        print "[SSDP_Client] stop()"
+        Logr.debug("stop()")
         if not self.running:
             return
 
@@ -113,7 +114,7 @@ class SSDP_Client(DatagramProtocol):
         self.listen_port.stopListening()
 
     def respond(self, headers, (address, port)):
-        print "[SSDP_Client] respond", address, port
+        Logr.debug("respond() %s %d", address, port)
         msg = 'HTTP/1.1 200 OK\r\n'
         msg += headers_join(headers)
         msg += '\r\n\r\n'
@@ -121,10 +122,10 @@ class SSDP_Client(DatagramProtocol):
         try:
             self.transport.write(msg, (address, port))
         except socket.error, e:
-            print "[SSDP_Client] socket.error:", e
+            Logr.warning("socket.error: %s", e)
 
     def send(self, method, headers, (address, port)):
-        #print "[SSDP_Client] send", address, port
+        Logr.debug("send() %s:%s", address, port)
         msg = '%s * HTTP/1.1\r\n' % method
         msg += headers_join(headers)
         msg += '\r\n\r\n'
@@ -132,7 +133,7 @@ class SSDP_Client(DatagramProtocol):
         try:
             self.transport.write(msg, (address, port))
         except socket.error, e:
-            print "[SSDP_Client] socket.error:", e
+            Logr.warning("socket.error: %s", e)
 
     def send_NOTIFY(self, nt, uuid=None, nts='ssdp:alive'):
         if self.ssdp.device.bootID is None:
@@ -145,7 +146,7 @@ class SSDP_Client(DatagramProtocol):
 
         usn, nt = build_notification_type(uuid, nt)
 
-        print "[SSDP_Client] send_NOTIFY", nts, usn
+        Logr.debug("send_NOTIFY %s:%s", nts, usn)
 
         headers = {
             # max-age is notifySequenceInterval + 10 minutes
@@ -195,7 +196,7 @@ class SSDP_Client(DatagramProtocol):
                 cur_delay += delay
 
     def _notifySequenceCall(self, initial=False):
-        print "[SSDP_Client] _notifySequenceCall", initial
+        Logr.debug("_notifySequenceCall initial=%s", initial)
 
         # 3 + 2d + k
         #  - 3  rootdevice
@@ -208,8 +209,8 @@ class SSDP_Client(DatagramProtocol):
         if initial:
             call_delay = 1
 
-        print call_count, "calls with delay of", str(call_delay) + "s", "per call,", \
-            "total duration of", str(call_count * call_delay) + "s"
+        Logr.debug("sending %d calls with delay of %ds per call, total duration of %ds",
+                   call_count, call_delay, call_count * call_delay)
 
         self.sendall_NOTIFY(call_delay)
 
@@ -227,7 +228,7 @@ class SSDP_Listener(DatagramProtocol):
         if self.running:
             raise Exception()
 
-        print "[SSDP_Listener] listen()"
+        Logr.debug("listen()")
         self.listen_port = reactor.listenMulticast(SSDP_PORT, self, listenMultiple=True)
         self.running = True
 
@@ -237,12 +238,12 @@ class SSDP_Listener(DatagramProtocol):
         for interface in self.interfaces:
             self.transport.joinGroup(SSDP_ADDR_V4, interface)
             if interface == '':
-                print "[SSDP_Listener] joined on ANY"
+                Logr.debug("joined on ANY")
             else:
-                print "[SSDP_Listener] joined on", interface
+                Logr.debug("joined on %s", interface)
 
     def stop(self):
-        print "[SSDP_Listener] stop()"
+        Logr.debug("stop()")
 
         if not self.running:
             return
@@ -250,7 +251,7 @@ class SSDP_Listener(DatagramProtocol):
         self.listen_port.stopListening()
 
     def datagramReceived(self, data, (address, port)):
-        #print "[SSDP_Listener] datagramReceived", address, port
+        Logr.debug("datagramReceived() from %s:%s", address, port)
 
         method, path, version, headers = http_parse_raw(data)
 
@@ -259,24 +260,24 @@ class SSDP_Listener(DatagramProtocol):
         elif method == 'NOTIFY':
             self.received_NOTIFY(headers, (address, port))
         else:
-            print "[SSDP_Listener] Unhandled Method '" + str(method) + "'"
+            Logr.warning("Unhandled Method '%s'", method)
 
     def received_MSEARCH(self, headers, (address, port)):
-        print "[SSDP_Listener] received_MSEARCH"
+        Logr.debug("received_MSEARCH")
         try:
             host = headers['host']
             man = str(headers['man']).strip('"')
             mx = int(headers['mx'])
             st = headers['st']
         except KeyError:
-            print "[SSDP_Listener] ERROR: received message with missing headers"
+            Logr.warning("Received message with missing headers")
             return
         except ValueError:
-            print "[SSDP_Listener] ERROR: received message with invalid values"
+            Logr.warning("Received message with invalid values")
             return
 
         if man != 'ssdp:discover':
-            print "[SSDP_Listener] ERROR: received message where MAN != 'ssdp:discover'"
+            Logr.warning("Received message where MAN != 'ssdp:discover'")
             return
 
         if st == 'ssdp:all':
@@ -287,10 +288,10 @@ class SSDP_Listener(DatagramProtocol):
             reactor.callLater(self.rand.randint(1, mx),
                               self.respond_MSEARCH, st, (address, port))
         else:
-            print "[SSDP_Listener] ignoring '" + str(st) + "'"
+            Logr.debug("ignoring %s", st)
 
     def respond(self, headers, (address, port)):
-        print "[SSDP_Listener] respond", address, port
+        Logr.debug("respond() %s:%s", address, port)
         msg = 'HTTP/1.1 200 OK\r\n'
         msg += headers_join(headers)
         msg += '\r\n\r\n'
@@ -298,10 +299,10 @@ class SSDP_Listener(DatagramProtocol):
         try:
             self.transport.write(msg, (address, port))
         except socket.error, e:
-            print "[SSDP_Listener] socket.error:", e
+            Logr.warning("socket.error: %s", e)
 
     def respond_MSEARCH(self, st, (address, port)):
-        print "[SSDP_Listener] respond_MSEARCH"
+        Logr.debug("respond_MSEARCH")
 
         if self.ssdp.device.bootID is None:
             self.ssdp.device.bootID = int(time.time())
@@ -329,4 +330,4 @@ class SSDP_Listener(DatagramProtocol):
         self.respond(headers, (address, port))
 
     def received_NOTIFY(self, headers, (address, port)):
-        print "[SSDP_Listener] received_NOTIFY"
+        Logr.debug("received_NOTIFY")

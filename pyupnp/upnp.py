@@ -4,6 +4,7 @@ from twisted.internet import reactor
 from twisted.web.error import UnsupportedMethod
 from twisted.web.resource import Resource
 from twisted.web.server import Site
+from pyupnp.logr import Logr
 from pyupnp.util import twisted_absolute_path
 
 __author__ = 'Dean Gardiner'
@@ -34,7 +35,7 @@ class UPnP(Resource):
         if self.running:
             raise Exception()
 
-        print "[UPnP] listen()"
+        Logr.debug("listen()")
         self.site = Site(self)
         self.site_port = reactor.listenTCP(0, self.site, interface=interface)
         self.listen_address = self.site_port.socket.getsockname()[0]
@@ -43,13 +44,13 @@ class UPnP(Resource):
 
         self.device.location = "http://%s:" + str(self.listen_port)
 
-        print "[UPnP] listening on", self.listen_address + ":" + str(self.listen_port)
+        Logr.debug("listening on %s:%s", self.listen_address, self.listen_port)
 
     def stop(self):
         if not self.running:
             return
 
-        print "[UPnP] stop()"
+        Logr.debug("stop()")
         self.site_port.stopListening()
         self.running = False
 
@@ -64,7 +65,7 @@ class UPnP(Resource):
             if path == service.serviceId:
                 return ServiceResource(service)
 
-        print "[UPnP] unhandled request", path
+        Logr.debug("unhandled request %s", path)
         return Resource()
 
 
@@ -84,7 +85,7 @@ class ServiceResource(Resource):
         if path == 'control':
             return ServiceControlResource(self.service)
 
-        print "[UPnP][" + str(self.service.serviceType) + "] unhandled request", path
+        Logr.debug("(%s) unhandled request %s", self.service.serviceType, path)
         return Resource()
 
 
@@ -97,8 +98,8 @@ class ServiceControlResource(Resource):
         try:
             return Resource.render(self, request)
         except UnsupportedMethod, e:
-            print "[UPnP][" + str(self.service.serviceType) + "] unhandled method", \
-                request.method
+            Logr.debug("(%s) unhandled method %s",
+                       self.service.serviceType, request.method)
             raise e
 
     def render_POST(self, request):
@@ -108,7 +109,7 @@ class ServiceControlResource(Resource):
         name = r._name
         kwargs = r._asdict()
 
-        print "[UPnP][" + str(self.service.serviceType) + "]", name
+        Logr.debug("(%s) %s", self.service.serviceType, name)
 
         if name not in self.service.actions or name not in self.service.actionFunctions:
             raise NotImplementedError()
@@ -157,12 +158,11 @@ class ServiceEventResource(Resource):
         try:
             return Resource.render(self, request)
         except UnsupportedMethod, e:
-            print "[UPnP][" + str(self.service.serviceType) + "] unhandled method",\
-                request.method
+            Logr.debug("(%s) %s", self.service.serviceType, request.method)
             raise e
 
     def render_SUBSCRIBE(self, request):
-        print "[UPnP][" + str(self.service.serviceType) + "][Event] SUBSCRIBE"
+        Logr.debug("(%s) SUBSCRIBE", self.service.serviceType)
 
         if request.requestHeaders.hasHeader('sid'):
             # Renew
@@ -170,16 +170,18 @@ class ServiceEventResource(Resource):
             if sid in self.service.subscriptions:
                 self.service.subscriptions[sid].last_subscribe = time.time()
                 self.service.subscriptions[sid].expired = False
-                print "[UPnP][" + str(self.service.serviceType) + "][Event] Successfully renewed subscription"
+                Logr.debug("(%s) Successfully renewed subscription",
+                           self.service.serviceType)
             else:
-                print "[UPnP][" + str(self.service.serviceType) + "][Event] Received invalid subscription renewal"
+                Logr.debug("(%s) Received invalid subscription renewal",
+                           self.service.serviceType)
         else:
             # New Subscription
             nt = self._parse_nt(getHeader(request, 'nt'))
             callback = self._parse_callback(getHeader(request, 'callback'))
             timeout = self._parse_timeout(getHeader(request, 'timeout', False))
 
-            print "[UPnP][" + str(self.service.serviceType) + "][Event]", callback, timeout
+            Logr.debug("(%s) %s %s", self.service.serviceType, callback, timeout)
 
             responseHeaders = self.service.subscribe(callback, timeout)
             if responseHeaders is not None and type(responseHeaders) is dict:
@@ -187,21 +189,21 @@ class ServiceEventResource(Resource):
                     request.setHeader(name, value)
                 return ''
             else:
-                print "[UPnP][" + str(self.service.serviceType) + "][Event] SUBSCRIBE FAILED"
+                Logr.debug("(%s) SUBSCRIBE FAILED", self.service.serviceType)
 
     def render_UNSUBSCRIBE(self, request):
-        print "[UPnP][" + str(self.service.serviceType) + "][Event] UNSUBSCRIBE"
+        Logr.debug("(%s) UNSUBSCRIBE", self.service.serviceType)
 
         if request.requestHeaders.hasHeader('sid'):
             # Cancel
             sid = getHeader(request, 'sid')
             if sid in self.service.subscriptions:
                 self.service.subscriptions[sid].expired = True
-                print "[UPnP][" + str(self.service.serviceType) + "][Event] Successfully unsubscribed"
+                Logr.debug("(%s) Successfully unsubscribed", self.service.serviceType)
             else:
-                print "[UPnP][" + str(self.service.serviceType) + "][Event] Received invalid UNSUBSCRIBE request"
+                Logr.debug("(%s) Received invalid UNSUBSCRIBE request", self.service.serviceType)
         else:
-            print "[UPnP][" + str(self.service.serviceType) + "][Event] Received invalid UNSUBSCRIBE request"
+            Logr.debug("(%s) Received invalid UNSUBSCRIBE request", self.service.serviceType)
 
 
 class ServeResource(Resource):

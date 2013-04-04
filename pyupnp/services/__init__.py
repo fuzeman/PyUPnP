@@ -3,6 +3,7 @@ import xml.etree.ElementTree as et
 from twisted.internet import reactor
 from pyupnp.event import EventSubscription
 from pyupnp.lict import Lict
+from pyupnp.logr import Logr
 from pyupnp.util import make_element
 
 
@@ -83,7 +84,7 @@ class Service(object):
                 subscription.notify(prop)
 
     def dump(self):
-        print "dump()"
+        Logr.debug("xml tree dumped")
         scpd = et.Element('scpd', attrib={
             'xmlns': 'urn:schemas-upnp-org:service-1-0',
         })

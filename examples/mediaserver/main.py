@@ -1,7 +1,9 @@
+import logging
 from threading import Thread
 import time
 from twisted.internet import reactor
 from pyupnp.device import Device, DeviceIcon
+from pyupnp.logr import Logr
 from pyupnp.services import register_action
 from pyupnp.services.connection_manager import ConnectionManagerService
 from pyupnp.services.content_directory import ContentDirectoryService
@@ -71,7 +73,7 @@ class MSMediaReceiverRegistrar(MediaReceiverRegistrarService):
 
     @register_action('RegisterDevice')
     def registerDevice(self, request):
-        print "RegisterDevice not implemented"
+        Logr.warning("RegisterDevice not implemented")
         return {
             'RegistrationRespMsg': None
         }
@@ -119,6 +121,8 @@ class CommandThread(Thread):
         self.running = False
 
 if __name__ == '__main__':
+    Logr.configure(logging.DEBUG)
+
     device = MediaServerDevice()
 
     upnp = UPnP(device)

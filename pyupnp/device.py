@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as et
 import pyupnp
+from pyupnp.logr import Logr
 from pyupnp.util import make_element
 
 
@@ -56,7 +57,7 @@ class Device:
     UDN = property(get_UDN)
 
     def dump(self):
-        print "dump()"
+        Logr.debug("xml tree dumped")
         root = et.Element('root', attrib={
             'configId': str(self.configID)
         })
