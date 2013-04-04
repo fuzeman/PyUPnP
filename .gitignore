@@ -1,4 +1,5 @@
 /.idea
 /PyUPnP.egg-info
+/dist
 
 *.pyc

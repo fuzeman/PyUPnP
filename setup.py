@@ -28,5 +28,18 @@ setup(
     author='Dean Gardiner',
     author_email='gardiner91@gmail.com',
     url='http://github.com/fuzeman/PyUPnP',
-    packages=['pyupnp'], requires=['twisted', 'requests', 'SOAPpy'],
+
+    packages=['pyupnp', 'pyupnp.services', 'pyupnp.services.microsoft'],
+    requires=['twisted', 'requests', 'SOAPpy'],
+
+    classifiers=[
+        'Programming Language :: Python',
+        'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
+        'Operating System :: OS Independent',
+        'Development Status :: 4 - Beta',
+        'Environment :: Other Environment',
+        'Intended Audience :: Developers',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Topic :: System :: Networking'
+    ]
 )
