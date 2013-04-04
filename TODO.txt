@@ -1,0 +1,7 @@
+[General]
+    - [REFACTOR] Cleanup Debugging
+    - [FUNCTION] Embedded devices
+
+[UPnP Eventing]
+    - [FUNCTION] Subscriptions with multiple callbacks
+    - [FUNCTION] Multicast eventing
