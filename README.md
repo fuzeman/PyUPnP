@@ -1,7 +1,6 @@
 PyUPnP
 ======
-
-Simple Python UPnP device library built in Twisted
+*Simple Python UPnP device library built in Twisted*
 
 **NOTE:** PyUPnP doesn't implement ContentDirectory, ConnectionManager, etc.. services.
 
