@@ -48,7 +48,7 @@ def get_default_address(host):
         s.connect((host, 80))
         address = s.getsockname()[0]
         s.close()
-    except socket.gaierror, e:
+    except socket.gaierror:
         return None
     return address
 
@@ -90,6 +90,12 @@ def headers_join(headers):
     for hk, hv in headers.items():
         msg += str(hk) + ': ' + str(hv) + '\r\n'
     return msg
+
+
+def build_notification_type(uuid, nt):
+    if nt == '':
+        return 'uuid:' + uuid, 'uuid:' + uuid
+    return 'uuid:' + uuid + '::' + nt, nt
 
 
 def parse_usn(usn):

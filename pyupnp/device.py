@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as et
+import pyupnp
 from pyupnp.util import make_element
 
 
@@ -14,7 +15,7 @@ class Device:
 
     modelDescription = "PyUPnP"
     modelName = "PyUPnP"
-    modelNumber = "0.8a"
+    modelNumber = pyupnp.__version__
     modelURL = "http://github.com/fuzeman/PyUPnP"
     serialNumber = None
     UPC = None

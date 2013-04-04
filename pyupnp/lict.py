@@ -242,12 +242,13 @@ class Lict():
         """ L.reverse() -- reverse *IN PLACE* """
         self._col_list.reverse()
 
+    # noinspection PyShadowingBuiltins
     def sort(self, cmp=None, key=None, reverse=False):
         """
         L.sort(cmp=None, key=None, reverse=False) -- stable sort *IN PLACE*;
         cmp(x, y) -> -1, 0, 1
         """
-        self._col_list.sort()
+        self._col_list.sort(cmp, key, reverse)
 
     def __iter__(self):
         return iter(self._col_list)

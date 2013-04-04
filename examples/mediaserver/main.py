@@ -1,4 +1,4 @@
-import uuid
+from threading import Thread
 import time
 from twisted.internet import reactor
 from pyupnp.device import Device, DeviceIcon
@@ -13,7 +13,7 @@ from pyupnp.upnp import UPnP
 class MediaServerDevice(Device):
     deviceType = 'urn:schemas-upnp-org:device:MediaServer:1'
 
-    friendlyName = "PyUPnP MediaServer Example"
+    friendlyName = "PyUPnP-MediaServer"
 
     def __init__(self):
         Device.__init__(self)
@@ -82,6 +82,42 @@ class MSMediaReceiverRegistrar(MediaReceiverRegistrarService):
             'Result': None
         }
 
+
+class CommandThread(Thread):
+    def __init__(self, device, upnp, ssdp):
+        """
+
+        :type device: Device
+        :type upnp: UPnP
+        :type ssdp: SSDP
+        """
+        Thread.__init__(self)
+        self.device = device
+        self.upnp = upnp
+        self.ssdp = ssdp
+
+        self.running = True
+
+    def run(self):
+        while self.running:
+            try:
+                command = 'command_' + raw_input('')
+
+                if hasattr(self, command):
+                    getattr(self, command)()
+            except EOFError:
+                self.command_stop()
+
+    def command_stop(self):
+        # Send 'byebye' NOTIFY
+        self.ssdp.clients.sendall_NOTIFY(None, 'ssdp:byebye', True)
+
+        # Stop everything
+        self.upnp.stop()
+        self.ssdp.stop()
+        reactor.stop()
+        self.running = False
+
 if __name__ == '__main__':
     device = MediaServerDevice()
 
@@ -96,5 +132,8 @@ if __name__ == '__main__':
         reactor.callLater(5, event_test)
 
     event_test()
+
+    r = CommandThread(device, upnp, ssdp)
+    r.start()
 
     reactor.run()

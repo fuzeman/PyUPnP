@@ -1,12 +1,10 @@
-import pprint
 from random import Random
 import socket
-from threading import Semaphore
 import time
-from twisted.internet import reactor
+from twisted.internet import reactor, task
 from twisted.internet.protocol import DatagramProtocol
-from pyupnp.data import DeviceDescription
-from pyupnp.util import http_parse_raw, get_default_v4_address, parse_usn, header_exists, headers_join
+from pyupnp.util import (http_parse_raw, get_default_v4_address,
+                         headers_join, build_notification_type)
 
 __author__ = 'Dean Gardiner'
 
@@ -80,12 +78,18 @@ class SSDP_ClientsInterface:
         for client in self.clients:
             client.respond(headers, (address, port))
 
+    def sendall_NOTIFY(self, delay=1, nts='ssdp:alive', blocking=False):
+        for client in self.clients:
+            client.sendall_NOTIFY(delay, nts, blocking)
+
 
 class SSDP_Client(DatagramProtocol):
-    def __init__(self, ssdp, interface):
+    def __init__(self, ssdp, interface, notifyInterval=1800):
         self.ssdp = ssdp
         self.interface = interface
 
+        self.notifySequenceInterval = notifyInterval
+        self.notifySequenceLoop = task.LoopingCall(self._notifySequenceCall)
         self.running = False
 
     def listen(self):
@@ -97,11 +101,15 @@ class SSDP_Client(DatagramProtocol):
         self.running = True
         print "[SSDP_Client] listening on", self.listen_port.socket.getsockname()
 
+        reactor.callLater(0, self._notifySequenceCall, True)
+        self.notifySequenceLoop.start(self.notifySequenceInterval)
+
     def stop(self):
         print "[SSDP_Client] stop()"
         if not self.running:
             return
 
+        self.notifySequenceLoop.stop()
         self.listen_port.stopListening()
 
     def respond(self, headers, (address, port)):
@@ -114,6 +122,96 @@ class SSDP_Client(DatagramProtocol):
             self.transport.write(msg, (address, port))
         except socket.error, e:
             print "[SSDP_Client] socket.error:", e
+
+    def send(self, method, headers, (address, port)):
+        #print "[SSDP_Client] send", address, port
+        msg = '%s * HTTP/1.1\r\n' % method
+        msg += headers_join(headers)
+        msg += '\r\n\r\n'
+
+        try:
+            self.transport.write(msg, (address, port))
+        except socket.error, e:
+            print "[SSDP_Client] socket.error:", e
+
+    def send_NOTIFY(self, nt, uuid=None, nts='ssdp:alive'):
+        if self.ssdp.device.bootID is None:
+            self.ssdp.device.bootID = int(time.time())
+
+        location = self.ssdp.device.getLocation(get_default_v4_address())
+
+        if uuid is None:
+            uuid = self.ssdp.device.uuid
+
+        usn, nt = build_notification_type(uuid, nt)
+
+        print "[SSDP_Client] send_NOTIFY", nts, usn
+
+        headers = {
+            # max-age is notifySequenceInterval + 10 minutes
+            'CACHE-CONTROL': 'max-age = %d' % (self.notifySequenceInterval + (10 * 60)),
+            'LOCATION': location,
+            'SERVER': self.ssdp.device.server,
+            'NT': nt,
+            'NTS': nts,
+            'USN': usn,
+            'BOOTID.UPNP.ORG': self.ssdp.device.bootID,
+            'CONFIGID.UPNP.ORG': self.ssdp.device.configID
+        }
+
+        self.send('NOTIFY', headers, (SSDP_ADDR_V4, SSDP_PORT))
+
+    def sendall_NOTIFY(self, delay=1, nts='ssdp:alive', blocking=False):
+        if delay is None:
+            delay = 0
+
+        notifications = [
+            # rootdevice
+            'upnp:rootdevice',
+            '',
+            self.ssdp.device.deviceType,
+        ]
+
+        # Add service notifications
+        for service in self.ssdp.device.services:
+            notifications.append(service.serviceType)
+
+        # Queue notify calls
+        cur_delay = delay
+        for nt in notifications:
+            uuid = None
+            if type(nt) is tuple:
+                if len(nt) == 1:
+                    nt = nt[0]
+                elif len(nt) == 2:
+                    nt, uuid = nt
+                else:
+                    raise ValueError()
+                # Execute the call
+            if blocking:
+                self.send_NOTIFY(nt, uuid, nts)
+            else:
+                reactor.callLater(cur_delay, self.send_NOTIFY, nt, uuid, nts)
+                cur_delay += delay
+
+    def _notifySequenceCall(self, initial=False):
+        print "[SSDP_Client] _notifySequenceCall", initial
+
+        # 3 + 2d + k
+        #  - 3  rootdevice
+        #  - 2d embedded devices
+        #  - k  distinct services
+        # TODO: Embedded device calls
+        call_count = 3 + len(self.ssdp.device.services)
+
+        call_delay = self.notifySequenceInterval / call_count
+        if initial:
+            call_delay = 1
+
+        print call_count, "calls with delay of", str(call_delay) + "s", "per call,", \
+            "total duration of", str(call_count * call_delay) + "s"
+
+        self.sendall_NOTIFY(call_delay)
 
 
 class SSDP_Listener(DatagramProtocol):
@@ -213,14 +311,18 @@ class SSDP_Listener(DatagramProtocol):
         else:
             location = self.ssdp.device.getLocation(get_default_v4_address())
 
+        usn, st = build_notification_type(self.ssdp.device.uuid, st)
+
         headers = {
             'CACHE-CONTROL': 'max-age = %d' % self.responseExpire,
             'EXT': '',
             'LOCATION': location,
             'SERVER': self.ssdp.device.server,
             'ST': st,
-            'USN': 'uuid:' + self.ssdp.device.uuid + '::' + st,
-            'BOOTID.UPNP.ORG': self.ssdp.device.bootID ,
+            'USN': usn,
+            'OPT': '"http://schemas.upnp.org/upnp/1/0/"; ns=01',
+            '01-NLS': self.ssdp.device.bootID,
+            'BOOTID.UPNP.ORG': self.ssdp.device.bootID,
             'CONFIGID.UPNP.ORG': self.ssdp.device.configID,
         }
 
@@ -228,36 +330,3 @@ class SSDP_Listener(DatagramProtocol):
 
     def received_NOTIFY(self, headers, (address, port)):
         print "[SSDP_Listener] received_NOTIFY"
-
-    # def sendNotify(self, nt, usn, description=None, nts='ssdp:alive', repeat=1,
-    #                expire=1800, address=SSDP_ADDR_V4, port=SSDP_PORT):
-    #     """
-    #
-    #     :type description: DeviceDescription
-    #     """
-    #     if description is None:
-    #         if self.description is None:
-    #             raise ValueError()
-    #         else:
-    #             description = self.description
-    #
-    #     if self.bootID is None:
-    #         self.bootID = int(time.time())
-    #
-    #     headers = {
-    #         'CACHE-CONTROL': 'max-age = %d' % expire,
-    #         'LOCATION': description.location,
-    #         'NT': nt,
-    #         'NTS': nts,
-    #         'SERVER': description.server,
-    #         'USN': usn,
-    #         'BOOTID.UPNP.ORG': self.bootID,
-    #         'CONFIGID.UPNP.ORG': description.configID
-    #     }
-    #
-    #     if self.port.socket.getsockname()[1] != 1900:
-    #         headers['SEARCHPORT.UPNP.ORG'] = self.port.socket.getsockname()[1]
-    #
-    #     #pprint.pprint(headers)
-    #
-    #     self.sendRequest('NOTIFY', headers, repeat, address, port)
