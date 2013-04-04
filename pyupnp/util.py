@@ -63,11 +63,6 @@ def make_element(name, text):
     return elem
 
 
-def get_default_v6_address():
-    # TODO: Fix so this works when internet is inaccessible
-    return get_default_address("ipv6.google.com")
-
-
 def absolute_url(baseUrl, url):
     if url.strip() == '':
         return url
